@@ -3,19 +3,23 @@ import numpy as np
 
 lamda_b = 50 #入口点经度
 fai_b = 0 #入口点纬度
-R_EA = 6578.14 #地球停泊轨道半径
+R = 6378.14
+R_EA = R + 200 #地球停泊轨道半径
 i_L = 90 #绕月轨道倾角
-epsilon = 4.243 #入口点倾角
+epsilon = 3.4521 #入口点倾角
+beta =90 #航迹角
 R_EL = 384400 #地月距
 V_L = 1.022 #月球公转线速度
 miu_E = 398600 #地球引力参数
 miu_L = 4902.8 #月球引力参数
 rou = 66200 #月球影响球半径
 angle = 23.44 #黄赤交角
+R_C = 320000 #出事的位置
 
 lamda_b = math.radians(lamda_b)
 fai_b = math.radians(fai_b)
 i_L = math.radians(i_L)
+beta = math.radians(beta)
 epsilon = math.radians(epsilon) #全部转换为弧度
 
 delta = math.acos(math.cos(lamda_b) * math.cos(fai_b))
@@ -90,9 +94,12 @@ except:
     f_EA = 0 #防止0附近的精度误差导致报错
 
 E_EA = 2*math.atan(math.sqrt((1-e_1)/(1+e_1)) * math.tan(f_EA/2))
+f_C = math.acos((1/e_1) * (p_1/R_C - 1))
+E_C = 2*math.atan(math.sqrt((1-e_1)/(1+e_1)) * math.tan(f_C/2))
 T_1 = math.sqrt(a_1**3 / miu_E) * ((E_B - e_1*math.sin(E_B)) - (E_EA - e_1*math.sin(E_EA)))
 T_1 = T_1 / 3600
-
+T_3 = math.sqrt(a_1**3 / miu_E) * ((E_C - e_1*math.sin(E_C)) - (E_EA - e_1*math.sin(E_EA)))
+T_3 = T_3 / 3600
 R_BVector = np.array([[d_0],
                       [e_0],
                       [f_0]])
@@ -103,6 +110,13 @@ V_BVector = np.array([[V_BX],
 scalar_2 = R_EA * R_B * math.sin(f_B-f_EA) / math.sqrt(miu_E*p_1)
 R_EAVector = (R_BVector * scalar_1) + (V_BVector * scalar_2)
 x, y, z = R_EAVector.flatten()
+
+latitude = math.asin(z / R_EA)
+latitude = math.degrees(latitude) - angle
+longitude = math.acos(x / math.sqrt(R_EA**2 - z**2))
+longitude = math.degrees(longitude)
+if y < 0:
+    longitude = -longitude
 
 #月心轨道参数
 v_B = math.sqrt(p_0 * (V_BX**2))
@@ -120,8 +134,25 @@ delta_2 = v_LP - math.sqrt(miu_L/r_LP)
 
 T = T_1 + T_2
 energy_cost = delta_1 + delta_2
+longitude = longitude - (T_1*360/24)
+while longitude < -180 or longitude > 180:
+    if longitude > 180:
+        longitude = longitude - 360
+    elif longitude < -180:
+        longitude = longitude + 360
 
-print('在地球停泊轨道上变轨处的地心位置矢量为:', x, y, z)
+
 print('总时间为（小时）：', T)
 print('近月距为（千米）：', r_LP)
 print('两次变轨所需能量为：', energy_cost)
+if latitude < 0:
+    print('地球停泊轨道变轨位置的纬度为：南纬', -latitude)
+else:
+    print('地球停泊轨道变轨位置的纬度为：北纬', latitude)
+if longitude < 0:
+    print('地球停泊轨道变轨位置的经度为：西经', -longitude)
+else:
+    print('地球停泊轨道变轨位置的经度为：东经', longitude)
+#这里还可以添加许多打印值
+
+
